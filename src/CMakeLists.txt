@@ -12,9 +12,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(nlohmann_json)
 
-add_library(lang_core
-  main.cpp
-)
+# add_library(lang_core)
 
 add_executable(compiler main.cpp)
 target_link_libraries(compiler PRIVATE nlohmann_json::nlohmann_json)

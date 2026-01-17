@@ -1,21 +1,18 @@
-#include <iostream>
+#include <gtest/gtest.h>
 
 #include "snaps.hpp"
 
-int add(int a, int b)
+int add(int a, int b) { return a + b; }
+int substract(int a, int b) { return a - b; }
+
+TEST(Math, Addition)
 {
-  return a + b;
+  std::string out = std::to_string(add(2, 3));
+  validate_output("addition", out);
 }
 
-void test_addition()
+TEST(Math, Substraction)
 {
-  int result = add(2, 3);
-  std::string actual_output = std::to_string(result);
-  assert_snap("addition", actual_output);
-}
-
-int main()
-{
-  test_addition();
-  return 0;
+  std::string out = std::to_string(substract(5, 3));
+  validate_output("substraction", out);
 }

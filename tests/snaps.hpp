@@ -5,6 +5,8 @@
 #include <iostream>
 #include <filesystem>
 
+#include <gtest/gtest.h>
+
 /**
  * Reads the entire content of the specified file,
  * and returns it as a string.
@@ -68,7 +70,7 @@ inline void upsert_snap_directory()
 /**
  * Asserts that the actual output matches the expected output.
  */
-inline void assert_snap(const std::string &test_id, const std::string &actual_output)
+inline void validate_output(const std::string &test_id, const std::string &actual_output)
 {
   /**
    * Makes sure that the snap directory exists throughout the process.
@@ -106,10 +108,11 @@ inline void assert_snap(const std::string &test_id, const std::string &actual_ou
     {
       write_file(snap_filepath, actual_output);
       std::cout << "[INFO]: Snap created at '" << snap_filepath << "'." << std::endl;
+      return;
     }
     else
     {
-      throw std::runtime_error("Snap not accepted for the test: " + test_name);
+      FAIL() << ("Snap not accepted for the test: " + test_name);
     }
   }
 
@@ -123,6 +126,6 @@ inline void assert_snap(const std::string &test_id, const std::string &actual_ou
     std::cout << "\n"
               << actual_output << "\n"
               << std::endl;
-    throw std::runtime_error("The snap does not match the expected output.");
+    FAIL() << "The snap does not match the expected output.";
   }
 }
