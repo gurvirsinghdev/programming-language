@@ -1,7 +1,19 @@
 #include <iostream>
 
+#include "base/Lexer.cpp"
+
 int main()
 {
-  std::cout << "Hello, Main" << std::endl;
+  Lexer lexer(
+      "int main() {\n"
+      "  # This is a comment\n"
+      "  float number = 3.14;\n"
+      "}");
+  auto tokens = lexer.tokenize();
+
+  for (const auto &token : tokens)
+  {
+    std::cout << token.toJson().dump() << std::endl;
+  }
   return 0;
 }

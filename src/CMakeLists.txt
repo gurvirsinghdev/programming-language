@@ -12,7 +12,10 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(nlohmann_json)
 
-# add_library(lang_core)
+add_library(lang_core
+  base/Lexer.cpp
+)
+target_link_libraries(lang_core PUBLIC nlohmann_json::nlohmann_json)
 
 add_executable(compiler main.cpp)
-target_link_libraries(compiler PRIVATE nlohmann_json::nlohmann_json)
+target_link_libraries(compiler PRIVATE lang_core)
