@@ -12,7 +12,16 @@ enum class TokenType
 {
   IDENTIFIER,
   INTEGER,
-  FLOAT
+  FLOAT,
+  KEYWORD,
+
+  LPAREN,
+  RPAREN,
+  LBRACE,
+  RBRACE,
+  LBRACKET,
+  RBRACKET,
+  SEMICOLON,
 };
 
 /**
@@ -23,6 +32,12 @@ struct PotentiallyDebugableToken
 {
   TokenType type;
   std::string lexeme;
+
+  /**
+   * Diagnostic information for error reporting.
+   */
+  std::size_t lineNumber;
+  std::size_t columnStart;
 };
 
 class Token
@@ -31,7 +46,7 @@ private:
   PotentiallyDebugableToken tokenData;
 
 public:
-  Token(TokenType t, const std::string &l) : tokenData{t, l} {};
+  Token(TokenType t, const std::string &l, std::size_t ln, std::size_t cs) : tokenData{t, l, ln, cs} {};
   ~Token() {};
 
   /**
@@ -41,7 +56,10 @@ public:
   {
     return nlohmann::json{
         {"type", static_cast<int>(tokenData.type)},
-        {"lexeme", tokenData.lexeme}};
+        {"lexeme", tokenData.lexeme},
+        {"lineNumber", tokenData.lineNumber},
+        {"columnStart", tokenData.columnStart},
+    };
   };
 };
 
@@ -58,8 +76,16 @@ private:
    * Diagnostic information for error reporting.
    */
   std::size_t lineNumber = 1;
-  std::size_t columnNumber = 0;
+  std::size_t columnStart = 0;
   std::size_t lexerPosition = 0;
+
+  /**
+   * Reserved keywords in the language.
+   */
+  std::vector<std::string> keywords = {
+      "int",
+      "float",
+  };
 
   /**
    * Returns true if the lexer has reached the end of the source code.
@@ -87,7 +113,18 @@ private:
   {
     char previousChar = currentChar();
     lexerPosition++;
+    columnStart++;
     return previousChar;
+  }
+
+  /**
+   * Skips over a new-line character, updating line and column counters.
+   */
+  void skipNewLine()
+  {
+    advance();
+    lineNumber++;
+    columnStart = 0;
   }
 
   /**
@@ -102,14 +139,25 @@ private:
     while (!isAtEnd())
     {
       char c = currentChar();
-      if (c == ' ' || c == '\t')
+      if (c == '\n')
+        skipNewLine();
+      else if (c == ' ' || c == '\t')
         advance();
-      if (c == '#')
+      else if (c == '#')
         while (currentChar() != '\n' && !isAtEnd())
           advance();
       else
         break;
     }
+  }
+
+  /**
+   * Builds a token from the current lexer position.
+   */
+  Token buildToken(TokenType type, const std::string &lexeme, std::size_t lexemeColumnStart)
+  {
+    Token token(type, lexeme, lineNumber, lexemeColumnStart);
+    return token;
   }
 
 public:
@@ -134,14 +182,21 @@ public:
       skipIgnoreableSequence();
 
       /**
-       * Parses identifiers and creates corresponding tokens.
+       * Parses identifiers and keywords.
        */
       if (std::isalpha(currentChar()))
       {
         std::string lexeme;
+        std::size_t lexemeColumnStart = columnStart;
         while (std::isalpha(currentChar()))
           lexeme += advance();
-        tokens.emplace_back(TokenType::IDENTIFIER, lexeme);
+
+        TokenType type =
+            keywords.end() != std::find(keywords.begin(), keywords.end(), lexeme)
+                ? TokenType::KEYWORD
+                : TokenType::IDENTIFIER;
+        tokens.push_back(std::move(buildToken(type, lexeme, lexemeColumnStart)));
+
         continue;
       }
 
@@ -151,6 +206,7 @@ public:
       if (std::isdigit(currentChar()))
       {
         std::string lexeme;
+        std::size_t lexemeColumnStart = columnStart;
         bool hasDeciamalPoint = false;
         while (std::isdigit(currentChar()) || currentChar() == '.')
         {
@@ -164,8 +220,38 @@ public:
           }
           lexeme += advance();
         }
-        tokens.emplace_back(hasDeciamalPoint ? TokenType::FLOAT : TokenType::INTEGER, lexeme);
+
+        TokenType type = hasDeciamalPoint ? TokenType::FLOAT : TokenType::INTEGER;
+        tokens.push_back(std::move(buildToken(type, lexeme, lexemeColumnStart)));
         continue;
+      }
+
+      /**
+       * Single-character tokens.
+       */
+      switch (currentChar())
+      {
+      case '(':
+        tokens.push_back(std::move(buildToken(TokenType::LPAREN, "(", columnStart)));
+        break;
+      case ')':
+        tokens.push_back(std::move(buildToken(TokenType::RPAREN, ")", columnStart)));
+        break;
+      case '{':
+        tokens.push_back(std::move(buildToken(TokenType::LBRACE, "{", columnStart)));
+        break;
+      case '}':
+        tokens.push_back(std::move(buildToken(TokenType::RBRACE, "}", columnStart)));
+        break;
+      case '[':
+        tokens.push_back(std::move(buildToken(TokenType::LBRACKET, "[", columnStart)));
+        break;
+      case ']':
+        tokens.push_back(std::move(buildToken(TokenType::RBRACKET, "]", columnStart)));
+        break;
+      case ';':
+        tokens.push_back(std::move(buildToken(TokenType::SEMICOLON, ";", columnStart)));
+        break;
       }
 
       advance();
